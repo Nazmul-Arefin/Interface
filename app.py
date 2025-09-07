@@ -58,14 +58,11 @@ st.markdown("""
   font-family: ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
   white-space: pre-wrap;
   line-height: 1.6;
-  text-align: left;            /* clean left alignment by default */
+  text-align: left;
   word-break: break-word;
   hyphens: auto;
 }
-.vs-text.vs-just {             /* optional: justify */
-  text-align: justify;
-  text-justify: inter-word;
-}
+.vs-text.vs-just { text-align: justify; text-justify: inter-word; }
 
 /* Buttons */
 .stButton>button {
@@ -136,33 +133,46 @@ st.markdown("""
 def draw_ocr_simple(np_img: np.ndarray, boxes: List[List[List[float]]], txts: Optional[List[str]] = None) -> Image.Image:
     img = Image.fromarray(np_img.copy())
     draw = ImageDraw.Draw(img)
-    try: font = ImageFont.load_default()
-    except Exception: font = None
+    try:
+        font = ImageFont.load_default()
+    except Exception:
+        font = None
     for i, box in enumerate(boxes):
         pts = [(int(x), int(y)) for x, y in box]
         draw.line(pts + [pts[0]], width=2, fill=(0, 255, 0))
         if txts and i < len(txts) and txts[i]:
-            label = str(txts[i]); x, y = pts[0]; y = max(0, y - 16)
-            w = 8 * len(label) + 6; h = 16
+            label = str(txts[i])
+            x, y = pts[0]
+            y = max(0, y - 16)
+            w = 8 * len(label) + 6
+            h = 16
             draw.rectangle([x, y, x + w, y + h], fill=(0, 0, 0))
             draw.text((x + 3, y), label, fill=(255, 255, 255), font=font)
     return img
 
 # ---------------- Normalize OCR outputs ----------------
 def normalize_paddle_result(result: Any) -> Tuple[List[List[List[float]]], List[str], List[float]]:
-    boxes: List[List[List[float]]], txts, scores = [], [], []
-    if result is None: return boxes, txts, scores
+    boxes: List[List[List[float]]] = []
+    txts: List[str] = []
+    scores: List[float] = []
+    if result is None:
+        return boxes, txts, scores
     pages = result if isinstance(result, list) else [result]
     for page in pages:
-        if not page: continue
+        if not page:
+            continue
         if isinstance(page, list) and page and isinstance(page[0], (list, tuple)) and len(page[0]) >= 2:
             for det in page:
                 try:
-                    box, info = det[0], det[1]
+                    box = det[0]
+                    info = det[1]
                     text = info[0] if isinstance(info, (list, tuple)) else str(info)
                     score = info[1] if isinstance(info, (list, tuple)) and len(info) > 1 else 1.0
-                    boxes.append(box); txts.append(text); scores.append(float(score))
-                except Exception: continue
+                    boxes.append(box)
+                    txts.append(text)
+                    scores.append(float(score))
+                except Exception:
+                    continue
             continue
         if isinstance(page, dict):
             dets = page.get("data") or page.get("result") or page.get("boxes") or []
@@ -170,15 +180,21 @@ def normalize_paddle_result(result: Any) -> Tuple[List[List[List[float]]], List[
                 try:
                     if isinstance(det, dict):
                         box = det.get("box") or det.get("bbox") or []
-                        text = det.get("text") or ""; score = det.get("score") or det.get("confidence") or 1.0
-                        if box: boxes.append(box); txts.append(str(text)); scores.append(float(score))
-                except Exception: continue
+                        text = det.get("text") or ""
+                        score = det.get("score") or det.get("confidence") or 1.0
+                        if box:
+                            boxes.append(box)
+                            txts.append(str(text))
+                            scores.append(float(score))
+                except Exception:
+                    continue
     return boxes, txts, scores
 
 # ---------------- Lightweight preprocessing (PIL-only) ----------------
 def preprocess_for_ocr(img_pil: Image.Image) -> Image.Image:
     # Upscale if small
-    w, h = img_pil.size; short = min(w, h)
+    w, h = img_pil.size
+    short = min(w, h)
     if short < 720:
         scale = 720.0 / max(1, short)
         img_pil = img_pil.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
@@ -203,11 +219,15 @@ def _pretty_wrap(text: str, width_chars: int = 80) -> str:
         # greedy wrap by word
         words, cur, cur_len = para.split(), [], 0
         for w in words:
-            if cur_len + len(w) + (1 if cur else 0) <= width_chars:
-                cur.append(w); cur_len += len(w) + (1 if cur_len else 0)
+            add = (1 if cur else 0) + len(w)
+            if cur_len + add <= width_chars:
+                cur.append(w)
+                cur_len += add
             else:
-                lines.append(" ".join(cur)); cur, cur_len = [w], len(w)
-        if cur: lines.append(" ".join(cur))
+                lines.append(" ".join(cur))
+                cur, cur_len = [w], len(w)
+        if cur:
+            lines.append(" ".join(cur))
     return "\n".join(lines)
 
 # ---------------- Sidebar (unchanged design) ----------------
@@ -223,7 +243,7 @@ with st.sidebar:
     )
     st.header("⚙️ Settings")
     lang = st.selectbox("OCR language", ["en", "latin", "ch", "japan", "korean", "bangla"], index=0)
-    justify_text = st.checkbox("Justify extracted text", value=True)  # NEW: better alignment, default ON
+    justify_text = st.checkbox("Justify extracted text", value=True)
 
     st.markdown("---")
     st.header("🔊 Speech")
@@ -266,8 +286,12 @@ def run_ocr(img: Image.Image, lang: str) -> Tuple[str, Optional[Image.Image]]:
                 test = base if angle == 0 else base.rotate(angle, expand=True)
                 raw2 = _infer(np.array(test.convert("RGB")))
                 if not is_empty(raw2):
-                    raw = raw2; np_img = np.array(test.convert("RGB")); done = True; break
-            if done: break
+                    raw = raw2
+                    np_img = np.array(test.convert("RGB"))
+                    done = True
+                    break
+            if done:
+                break
 
     if is_empty(raw) and lang != "latin":
         ocr_latin = load_ocr("latin")
@@ -289,7 +313,8 @@ def synth_tts_pyttsx3(text: str, rate: int, volume: float) -> bytes:
     eng.setProperty("volume", volume)
     try:
         voices = eng.getProperty("voices")
-        if voices: eng.setProperty("voice", voices[0].id)
+        if voices:
+            eng.setProperty("voice", voices[0].id)
     except Exception:
         pass
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
@@ -300,8 +325,10 @@ def synth_tts_pyttsx3(text: str, rate: int, volume: float) -> bytes:
         with open(wav_path, "rb") as f:
             return f.read()
     finally:
-        try: os.remove(wav_path)
-        except Exception: pass
+        try:
+            os.remove(wav_path)
+        except Exception:
+            pass
 
 # ---------------- Header ----------------
 st.markdown('<div class="vs-title">VisionSpeak</div>', unsafe_allow_html=True)
@@ -311,8 +338,10 @@ st.subheader("Upload → OCR → TTS")
 st.markdown('<div class="vs-card">', unsafe_allow_html=True)
 file = st.file_uploader("Upload an image (JPG/PNG)", type=["jpg", "jpeg", "png"])
 cA, cB = st.columns(2)
-with cA: run_btn = st.button("🔎 Extract Text", width="stretch")
-with cB: tts_btn = st.button("🗣️ Convert Last Text to Speech", width="stretch")
+with cA:
+    run_btn = st.button("🔎 Extract Text", width="stretch")
+with cB:
+    tts_btn = st.button("🗣️ Convert Last Text to Speech", width="stretch")
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------- State ----------------
@@ -366,14 +395,13 @@ if st.session_state["text"] or st.session_state["img_src"]:
         st.markdown("### 📝 Extracted Text")
         st.markdown('<div class="vs-card">', unsafe_allow_html=True)
         if st.session_state["text"].strip():
-            # Optional pretty wrap to avoid long jagged lines, then justify if selected
             pretty = _pretty_wrap(st.session_state["text"], width_chars=80)
             css_class = "vs-text vs-just" if justify_text else "vs-text"
             st.markdown(f'<div class="{css_class}">{pretty}</div>', unsafe_allow_html=True)
             st.download_button(
                 "Download text",
                 data=st.session_state["text"].encode("utf-8"),
-                file_name=f"visionspeak_{datetime.now().strftime("%Y%m%d_%H%M%S")}.txt",
+                file_name=f"visionspeak_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                 mime="text/plain",
                 width="stretch"
             )
@@ -388,7 +416,7 @@ if st.session_state["text"] or st.session_state["img_src"]:
         st.download_button(
             "Download audio (WAV)",
             data=st.session_state["audio"],
-            file_name=f"visionspeak_{datetime.now().strftime("%Y%m%d_%H%M%S")}.wav",
+            file_name=f"visionspeak_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav",
             mime="audio/wav",
             width="stretch"
         )
