@@ -1,17 +1,10 @@
-# Core UI
 streamlit>=1.33,<2
 pillow>=10.3,<11
-
-# Core math
-numpy==2.0.2
-
-# TTS (works with espeak-ng on Linux; add espeak-ng in packages.txt)
+numpy<2.0
 pyttsx3>=2.99
 
-# Paddle stack (Py 3.13 compatible)
-paddlepaddle==3.1.0
-paddleocr==3.1.0
-
-# Needed because paddleocr -> paddlex imports cv2
+paddlepaddle==2.6.1
+paddleocr==2.7.3
 opencv-python-headless>=4.8,<5
+
 
