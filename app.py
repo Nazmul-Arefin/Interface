@@ -387,9 +387,9 @@ st.markdown('<div class="vs-card">', unsafe_allow_html=True)
 file = st.file_uploader("Upload an image (JPG/PNG)", type=["jpg", "jpeg", "png"])
 cA, cB = st.columns(2)
 with cA:
-    run_btn = st.button("🔎 Extract Text", use_container_width=True)
+    run_btn = st.button("🔎 Extract Text", width="stretch")
 with cB:
-    tts_btn = st.button("🗣️ Convert Last Text to Speech", use_container_width=True)
+    tts_btn = st.button("🗣️ Convert Last Text to Speech", width="stretch")
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------- State ----------------
@@ -430,11 +430,11 @@ if st.session_state["text"] or st.session_state["img_src"]:
         st.markdown("### 🖼️ Image")
         st.markdown('<div class="vs-card">', unsafe_allow_html=True)
         if st.session_state["img_ann"] is not None:
-            st.image(st.session_state["img_ann"], caption="Detected text (annotated)", use_container_width=True)
+            st.image(st.session_state["img_ann"], caption="Detected text (annotated)", width="stretch")
             with st.expander("Show original"):
-                st.image(st.session_state["img_src"], use_container_width=True)
+                st.image(st.session_state["img_src"], width="stretch")
         elif st.session_state["img_src"] is not None:
-            st.image(st.session_state["img_src"], caption="Uploaded image", use_container_width=True)
+            st.image(st.session_state["img_src"], caption="Uploaded image", width="stretch")
         else:
             st.info("No image yet.")
         st.markdown('</div>', unsafe_allow_html=True)
@@ -449,7 +449,7 @@ if st.session_state["text"] or st.session_state["img_src"]:
                 data=st.session_state["text"].encode("utf-8"),
                 file_name=f"visionspeak_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                 mime="text/plain",
-                use_container_width=True
+                width="stretch"
             )
         else:
             st.info("Run OCR to see text here.")
@@ -464,7 +464,7 @@ if st.session_state["text"] or st.session_state["img_src"]:
             data=st.session_state["audio"],
             file_name=f"visionspeak_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav",
             mime="audio/wav",
-            use_container_width=True
+            width="stretch"
         )
     else:
         st.info("Click **Convert Last Text to Speech** to generate audio.")
