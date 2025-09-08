@@ -7,4 +7,6 @@ paddlepaddle==2.6.1
 paddleocr==2.7.3
 opencv-python-headless>=4.8,<5
 
+gTTS>=2.5.1
+
 
