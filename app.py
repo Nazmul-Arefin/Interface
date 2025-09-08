@@ -13,9 +13,7 @@ import streamlit as st
 import cv2
 
 from paddleocr import PaddleOCR
-import pyttsx3
-
-import subprocess, shlex
+from gtts import gTTS
 
 # ---------------- Page & styles ----------------
 st.set_page_config(page_title="VisionSpeak", page_icon="🗣️", layout="wide")
@@ -355,63 +353,23 @@ def run_ocr(img: Image.Image, lang: str, use_gpu: bool) -> Tuple[str, Optional[I
     annotated = draw_ocr_simple(np_img, boxes, txts) if boxes else None
     return text, annotated
 
-@st.cache_resource(show_spinner=False)
-def _get_tts_engine():
-    # Keep a single engine alive to avoid weakref callback issues
-    import pyttsx3
-    eng = pyttsx3.init()
-    return eng
-
-def synth_tts_pyttsx3(text: str, rate: int, volume: float) -> bytes:
+def synth_tts_gtts(text: str, lang: str = "en") -> bytes:
     """
-    First try espeak-ng CLI -> WAV (robust on Streamlit Cloud).
-    Fallback to cached pyttsx3 engine if CLI is unavailable.
+    Convert text → speech (MP3) using Google TTS (online).
+    Returns raw MP3 bytes.
     """
-    # --- Path 1: espeak-ng CLI (preferred) ---
     try:
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-            wav_path = tmp.name
-        vol = max(0, min(200, int(volume * 200)))  # espeak-ng amplitude 0..200
-        cmd = f'espeak-ng -w {shlex.quote(wav_path)} -s {int(rate)} -a {vol} --punct="" {shlex.quote(text)}'
-        r = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
-        if r.returncode == 0 and os.path.exists(wav_path):
-            with open(wav_path, "rb") as f:
-                data = f.read()
-            os.remove(wav_path)
-            return data
-    except Exception:
-        pass
-    finally:
-        try:
-            if "wav_path" in locals() and os.path.exists(wav_path):
-                os.remove(wav_path)
-        except Exception:
-            pass
-
-    # --- Path 2: pyttsx3 fallback (cached engine prevents weakref errors) ---
-    eng = _get_tts_engine()
-    eng.setProperty("rate", rate)
-    eng.setProperty("volume", volume)
-    try:
-        voices = eng.getProperty("voices")
-        if voices:
-            eng.setProperty("voice", voices[0].id)
-    except Exception:
-        pass
-
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-        wav_path = tmp.name
-    try:
-        eng.save_to_file(text, wav_path)
-        eng.runAndWait()
-        with open(wav_path, "rb") as f:
-            return f.read()
-    finally:
-        try:
-            os.remove(wav_path)
-        except Exception:
-            pass
-
+        tts = gTTS(text=text, lang=lang)
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+            mp3_path = tmp.name
+        tts.save(mp3_path)
+        with open(mp3_path, "rb") as f:
+            data = f.read()
+        os.remove(mp3_path)
+        return data
+    except Exception as e:
+        st.error(f"TTS failed: {e}")
+        return b""
 # ---------------- Header ----------------
 st.markdown('<div class="vs-title">VisionSpeak</div>', unsafe_allow_html=True)
 st.subheader("Upload → OCR → TTS")
@@ -452,8 +410,8 @@ if tts_btn:
     else:
         with st.spinner("Synthesizing speech…"):
             try:
-                st.session_state["audio"] = synth_tts_pyttsx3(
-                    st.session_state["text"], tts_rate, tts_volume
+                st.session_state["audio"] = synth_tts_gtts(st.session_state["text"], lang="en")
+
                 )
             except Exception as e:
                 st.error(f"TTS failed: {e}")
@@ -493,7 +451,7 @@ if st.session_state["text"] or st.session_state["img_src"]:
     st.markdown("### 🔊 Speech")
     st.markdown('<div class="vs-card">', unsafe_allow_html=True)
     if st.session_state["audio"]:
-        st.audio(st.session_state["audio"], format="audio/wav")
+        st.audio(st.session_state["audio"], format="audio/mp3")
         st.download_button(
             "Download audio (WAV)",
             data=st.session_state["audio"],
@@ -506,4 +464,5 @@ if st.session_state["text"] or st.session_state["img_src"]:
     st.markdown('</div>', unsafe_allow_html=True)
 else:
     st.caption("Upload an image to get started.")
+
 
