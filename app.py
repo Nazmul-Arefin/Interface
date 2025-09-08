@@ -411,8 +411,6 @@ if tts_btn:
         with st.spinner("Synthesizing speech…"):
             try:
                 st.session_state["audio"] = synth_tts_gtts(st.session_state["text"], lang="en")
-
-                )
             except Exception as e:
                 st.error(f"TTS failed: {e}")
 
@@ -464,5 +462,6 @@ if st.session_state["text"] or st.session_state["img_src"]:
     st.markdown('</div>', unsafe_allow_html=True)
 else:
     st.caption("Upload an image to get started.")
+
 
 
