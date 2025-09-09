@@ -377,7 +377,22 @@ st.subheader("Upload → OCR → TTS")
 
 # ---------------- Upload & actions ----------------
 st.markdown('<div class="vs-card">', unsafe_allow_html=True)
-file = st.file_uploader("Upload an image (JPG/PNG)", type=["jpg", "jpeg", "png"])
+file = st.file_uploader("Upload an image (JPG/PNG)", type=["jpg", "jpeg", "png"], key="vs_uploader")
+
+# Persist bytes so reruns don’t lose the file or its read cursor
+if file is not None:
+    file_bytes = file.getvalue()
+    if (
+        "file_bytes" not in st.session_state
+        or st.session_state.get("file_name") != file.name
+        or len(st.session_state.get("file_bytes") or b"") != len(file_bytes)
+    ):
+        st.session_state["file_bytes"] = file_bytes
+        st.session_state["file_name"] = file.name
+else:
+    st.session_state.pop("file_bytes", None)
+    st.session_state.pop("file_name", None)
+    
 cA, cB = st.columns(2)
 with cA:
     run_btn = st.button("🔎 Extract Text", width="stretch")
@@ -393,17 +408,16 @@ st.session_state.setdefault("audio", b"")
 
 # ---------------- Actions ----------------
 if run_btn:
-    if not file:
+    if not st.session_state.get("file_bytes"):
         st.warning("Please upload an image first.")
     else:
         with st.spinner("Running PaddleOCR…"):
-            img = Image.open(file).convert("RGB")
-            text, ann = run_ocr(img, lang=lang, use_gpu=use_gpu)
+            img = Image.open(io.BytesIO(st.session_state["file_bytes"])).convert("RGB")
+            text, ann = run_ocr(img, lang=lang, use_gpu=use_gpu)  # or try_all=auto_try if you added that
             st.session_state["text"] = text
             st.session_state["img_src"] = img
             st.session_state["img_ann"] = ann
             st.session_state["audio"] = b""
-        st.rerun()
 
 if tts_btn:
     if not st.session_state["text"].strip():
@@ -463,6 +477,7 @@ if st.session_state["text"] or st.session_state["img_src"]:
     st.markdown('</div>', unsafe_allow_html=True)
 else:
     st.caption("Upload an image to get started.")
+
 
 
 
