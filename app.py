@@ -403,6 +403,7 @@ if run_btn:
             st.session_state["img_src"] = img
             st.session_state["img_ann"] = ann
             st.session_state["audio"] = b""
+        st.rerun()
 
 if tts_btn:
     if not st.session_state["text"].strip():
@@ -462,6 +463,7 @@ if st.session_state["text"] or st.session_state["img_src"]:
     st.markdown('</div>', unsafe_allow_html=True)
 else:
     st.caption("Upload an image to get started.")
+
 
 
 
